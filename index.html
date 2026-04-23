@@ -2,102 +2,49 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>CAIXIANG666 | 联机终端 - 乖儿子特供版</title>
+    <title>CAIXIANG666 | 联机操盘终端</title>
+    <!-- ✅ 必须先加载这些库 -->
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-database-compat.js"></script>
     
     <style>
-        :root {
-            --bg: #0b0e14;
-            --card: #161b22;
-            --primary: #f1c40f;
-            --up: #ef4444;
-            --down: #22c55e;
-            --text: #e6edf3;
-            --accent: #9b59b6;
-        }
-
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; }
-        .container { max-width: 900px; margin: 0 auto; }
-
-        /* 顶部通知 */
-        #customAlert {
-            position: fixed; top: 20px; right: 20px; padding: 15px 25px;
-            background: var(--primary); color: black; border-radius: 8px;
-            font-weight: bold; z-index: 10000; display: none;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-        }
-
-        /* 登录 */
-        #loginBox { position: fixed; inset: 0; background: var(--bg); z-index: 1000; display: flex; justify-content: center; align-items: center; }
-        .login-card { background: var(--card); padding: 40px; border-radius: 20px; border: 1px solid var(--primary); width: 300px; text-align: center; }
-
-        /* 资产区 */
-        .dashboard {
-            background: #1e293b; padding: 20px; border-radius: 16px; 
-            display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
-        }
-        .balance-amount { font-size: 28px; font-weight: 800; color: var(--primary); }
-
-        /* 爸爸新闻确认区 */
-        #fatherConfirmArea {
-            display: none; background: #2d3436; border: 2px solid var(--accent);
-            padding: 20px; border-radius: 15px; margin-bottom: 20px; text-align: center;
-        }
-
-        /* 股票卡片 */
-        .stock-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
-        .stock-card { background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid #30363d; }
-        
-        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-        input[type="number"] { background: #0d1117; color: white; border: 1px solid #334155; padding: 8px; border-radius: 6px; width: 100%; box-sizing: border-box; }
-        .btn { border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .btn-buy { background: rgba(239, 68, 68, 0.2); color: var(--up); border: 1px solid var(--up); }
-        .btn-sell { background: rgba(34, 197, 94, 0.2); color: var(--down); border: 1px solid var(--down); }
-
-        #newsDisplay { background: rgba(241, 196, 15, 0.1); border: 1px solid var(--primary); padding: 10px; border-radius: 8px; margin-bottom: 15px; display: none; }
+        :root { --bg: #0b0e14; --card: #161b22; --primary: #f1c40f; --text: #e6edf3; }
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); padding: 20px; margin: 0; }
+        .login-box { position: fixed; inset: 0; background: var(--bg); z-index: 1000; display: flex; justify-content: center; align-items: center; }
+        .login-card { background: var(--card); padding: 40px; border-radius: 15px; border: 1px solid var(--primary); text-align: center; }
+        input { padding: 10px; margin: 10px 0; width: 200px; border-radius: 5px; border: 1px solid #334155; background: #0d1117; color: white; }
+        button { cursor: pointer; padding: 10px 20px; border-radius: 5px; border: none; font-weight: bold; }
+        #customAlert { position: fixed; top: 20px; right: 20px; background: var(--primary); color: black; padding: 15px; display: none; z-index: 2000; border-radius: 8px; }
     </style>
 </head>
 <body>
 
-<div id="customAlert">通知内容</div>
+<div id="customAlert"></div>
 
-<div id="loginBox">
+<div id="loginBox" class="login-box">
     <div class="login-card">
-        <h2 style="color:var(--primary)">🔐 授权登录</h2>
-        <input type="text" id="pName" placeholder="代号" style="width:100%; padding:12px; margin-bottom:10px; background:#0d1117; color:white; border:1px solid #334155; border-radius:8px;">
-        <input type="password" id="pPwd" placeholder="密码" style="width:100%; padding:12px; margin-bottom:20px; background:#0d1117; color:white; border:1px solid #334155; border-radius:8px;">
-        <button onclick="doLogin()" class="btn" style="width:100%; background:var(--primary); color:black;">进入大盘</button>
+        <h2 style="color:var(--primary)">🔐 系统授权</h2>
+        <input type="text" id="pName" placeholder="操盘代号"><br>
+        <input type="password" id="pPwd" placeholder="4位密码"><br>
+        <button onclick="doLogin()" style="background:var(--primary); width: 100%;">进入系统</button>
+        <p id="netStatus" style="font-size:12px; color:#8b949e; margin-top:10px">正在建立加密连接...</p>
     </div>
 </div>
 
-<div id="gameUI" class="container" style="display:none">
-    <div class="dashboard">
-        <div>
-            <div style="font-size:12px; color:#8b949e">当前可用资产</div>
-            <div id="balanceDisplay" class="balance-amount">¥100,000.00</div>
-        </div>
-        <button onclick="askForNews()" style="background:var(--accent); color:white; border:none; padding:12px 20px; border-radius:10px; cursor:pointer; font-weight:bold">📰 内部新闻</button>
+<div id="gameUI" style="display:none; max-width: 800px; margin: 0 auto;">
+    <div style="background:#1e293b; padding:20px; border-radius:10px; display:flex; justify-content:space-between; align-items:center;">
+        <h2 id="balanceDisplay" style="color:var(--primary); margin:0">资产: ¥100,000.00</h2>
+        <button onclick="getNews()" style="background:#9b59b6; color:white;">获取内幕</button>
     </div>
-
-    <!-- 爸爸确认逻辑区 -->
-    <div id="fatherConfirmArea">
-        <h3 id="fatherQuestion" style="margin-top:0">儿子，来看新闻了？</h3>
-        <p style="font-size:14px; color:#8b949e">（提示：只有承认身份爸爸才给你看）</p>
-        <div style="display:flex; gap:10px; justify-content:center">
-            <button onclick="getRealNews(true)" style="background:var(--down); color:white; padding:10px 20px; border:none; border-radius:8px; cursor:pointer; font-weight:bold">我是乖儿子，我要看</button>
-            <button onclick="getRealNews(false)" style="background:var(--up); color:white; padding:10px 20px; border:none; border-radius:8px; cursor:pointer; font-weight:bold">我偏不叫</button>
-        </div>
-    </div>
-
-    <div id="newsDisplay">📢 <b style="color:var(--primary)">内幕：</b> <span id="newsText"></span></div>
-
-    <div class="stock-grid" id="stockGrid"></div>
-
-    <button onclick="simulateDay()" style="width:100%; padding:20px; background:var(--primary); color:black; border:none; border-radius:12px; font-size:18px; font-weight:bold; margin-top:25px; cursor:pointer">⏳ 同步市场周期 (模拟一天)</button>
+    <div id="newsArea" style="display:none; background:#fffbe6; color:#92400e; padding:10px; margin-top:10px; border-radius:5px;">📢 <span id="newsContent"></span></div>
+    
+    <div id="stockGrid" style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:20px;"></div>
+    
+    <button onclick="simulateDay()" style="width:100%; margin-top:20px; padding:15px; background:var(--primary); font-size:18px;">⏳ 结束交易并结算</button>
 </div>
 
 <script>
+    // ✅ 这里的配置一定要准确
     const firebaseConfig = {
       apiKey: "AIzaSyAOCLu6X1gbrYzHLx_HlhJrtXQ_ftSddcQ",
       authDomain: "caixiang666-stock.firebaseapp.com",
@@ -109,53 +56,58 @@
 
     let db, balance = 100000, playerName = "", stocks = [], activeNews = null;
 
+    // ✅ 自定义通知
     function toast(msg) {
         const el = document.getElementById('customAlert');
-        el.innerText = msg; el.style.display = 'block';
+        el.innerText = msg;
+        el.style.display = 'block';
         setTimeout(() => { el.style.display = 'none'; }, 2000);
     }
 
+    // ✅ 初始化 Firebase
     function initFirebase() {
         if (typeof firebase !== 'undefined') {
             firebase.initializeApp(firebaseConfig);
             db = firebase.database();
-        } else { setTimeout(initFirebase, 500); }
+            document.getElementById('netStatus').innerText = "✅ 卫星连接就绪";
+        } else {
+            setTimeout(initFirebase, 500);
+        }
     }
     initFirebase();
 
+    // ✅ 核心函数：doLogin
     async function doLogin() {
         const name = document.getElementById('pName').value.trim();
         const pwd = document.getElementById('pPwd').value;
-        if(!name || !pwd) return toast("输入不能为空");
+        if(!name || !pwd) { toast("请输入代号和密码"); return; }
+        if(!db) { toast("卫星还没连上，请稍等"); return; }
+
         try {
             const snap = await db.ref('users/' + name).once('value');
             const data = snap.val();
             if (!data) {
                 await db.ref('users/' + name).set({ password: pwd, balance: 100000 });
                 balance = 100000;
-            } else if (data.password !== pwd) { return toast("授权失败"); }
-            else { balance = data.balance; }
+            } else if (data.password !== pwd) {
+                toast("授权密码错误！"); return;
+            } else {
+                balance = data.balance;
+            }
             playerName = name;
             document.getElementById('loginBox').style.display='none';
             document.getElementById('gameUI').style.display='block';
-            generateStocks();
-        } catch (e) { toast("卫星连接失败"); }
+            initStocks();
+            toast(`欢迎回来, ${playerName}`);
+        } catch (e) {
+            toast("数据库连接失败");
+            console.error(e);
+        }
     }
 
-    // ✅ 生成海量虚拟公司名
-    function generateStocks() {
-        const prefixes = ['赛博','量子','极地','深海','星际','红土','绿洲','幻梦','泰坦','神谕','动力','重工'];
-        const types = ['科技','基因','采掘','能源','传媒','制造','物流','军工','元宇宙','空天'];
-        const suffixes = ['股份','集团','实业','有限公司','核心'];
-        
-        stocks = [];
-        for(let i=0; i<8; i++) {
-            let name = prefixes[Math.floor(Math.random()*prefixes.length)] + 
-                       types[Math.floor(Math.random()*types.length)] + 
-                       suffixes[Math.floor(Math.random()*suffixes.length)];
-            let p = Math.random()*150 + 20;
-            stocks.push({ name: name, price: p, lastPrice: p, hold: 0 });
-        }
+    function initStocks() {
+        const names = ['量子科技','基因工程','星际矿业','虚拟房产'];
+        stocks = names.map(n => ({ name: n, price: Math.random()*100+50, lastPrice: 70, hold: 0 }));
         render();
     }
 
@@ -163,43 +115,10 @@
         const grid = document.getElementById('stockGrid');
         grid.innerHTML = '';
         stocks.forEach((s, i) => {
-            const chg = (((s.price - s.lastPrice)/s.lastPrice)*100).toFixed(2);
             grid.innerHTML += `
-                <div class="stock-card">
-                    <div style="font-weight:bold; font-size:14px; color:#8b949e">${s.name}</div>
-                    <div style="font-size:24px; color:${chg>=0?'var(--up)':'var(--down)'}; margin:10px 0">
-                        ¥${s.price.toFixed(2)} <span style="font-size:14px">${chg}%</span>
-                    </div>
-                    <div style="margin-bottom:10px">
-                        <input type="number" id="amt-${i}" placeholder="数量" value="100">
-                    </div>
-                    <div style="font-size:12px; color:#8b949e; margin-bottom:10px">持仓: ${s.hold} 股</div>
-                    <div class="controls">
-                        <button class="btn btn-buy" onclick="trade(${i}, 'buy')">买入</button>
-                        <button class="btn btn-sell" onclick="trade(${i}, 'sell')">清仓</button>
-                    </div>
-                </div>
-            `;
-        });
-        document.getElementById('balanceDisplay').innerText = `¥${balance.toLocaleString()}`;
-    }
-
-    // ✅ 爸爸确认逻辑
-    function askForNews() {
-        document.getElementById('fatherConfirmArea').style.display = 'block';
-    }
-
-    function getRealNews(isSon) {
-        document.getElementById('fatherConfirmArea').style.display = 'none';
-        if(isSon) {
-            const newsList = [
-                {t:"【科技】板块迎来突破性进展！", k:"科技", b:0.25},
-                {t:"【采掘】行业发现超大型矿脉！", k:"采掘", b:0.2},
-                {t:"【能源】需求由于寒冬大幅上涨！", k:"能源", b:0.18}
-            ];
-            activeNews = newsList[Math.floor(Math.random()*newsList.length)];
-            document.getElementById('newsDisplay').style.display = 'block';
-            document.getElementById('newsText').innerText = activeNews.t;
-            toast("爸爸奖励了你一条内幕消息！");
-        } else {
-            toast("不叫
+                <div style="background:var(--card); padding:15px; border-radius:10px; border:1px solid #334155">
+                    <b>${s.name}</b><br>
+                    <span style="font-size:20px; color:red">¥${s.price.toFixed(2)}</span><br>
+                    持仓: ${s.hold}<br>
+                    <button onclick="buy(${i})" style="background:rgba(255,0,0,0.1); color:red; border:1px solid red; margin-top:5px">买入</button>
+                    <button onclick="
