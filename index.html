@@ -1,108 +1,263 @@
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>CAIXIANG666 | 修复版终端</title>
-    <!-- 引入 Firebase -->
+    <title>CAIXIANG666 | 联机操盘终端 v2.0</title>
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-database-compat.js"></script>
-
-    <script>
-        // ✅ 这里的代码会在按钮点击前就准备好
-        var db, balance = 100000, playerName = "";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyAOCLu6X1gbrYzHLx_HlhJrtXQ_ftSddcQ",
-            authDomain: "caixiang666-stock.firebaseapp.com",
-            databaseURL: "https://caixiang666-stock-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "caixiang666-stock",
-            storageBucket: "caixiang666-stock.firebasestorage.app",
-            appId: "1:504203288950:web:2f93e0c6a2dde37f095a57"
-        };
-
-        // 初始化
-        function initApp() {
-            if (typeof firebase !== 'undefined') {
-                firebase.initializeApp(firebaseConfig);
-                db = firebase.database();
-                console.log("Firebase 卫星连接成功");
-                if(document.getElementById('netStatus')) {
-                    document.getElementById('netStatus').innerText = "✅ 卫星连接成功";
-                }
-            } else {
-                setTimeout(initApp, 500);
-            }
-        }
-        initApp();
-
-        // ✅ 定义 doLogin，确保它在全局范围内可用
-        window.doLogin = async function() {
-            const name = document.getElementById('pName').value.trim();
-            const pwd = document.getElementById('pPwd').value;
-            
-            if (!name || !pwd) { alert("代号和密码必填！"); return; }
-            if (!db) { alert("系统连接中，请稍等..."); return; }
-
-            const btn = document.getElementById('loginBtn');
-            btn.disabled = true;
-            btn.innerText = "验证中...";
-
-            try {
-                const snap = await db.ref('users/' + name).once('value');
-                const data = snap.val();
-
-                if (!data) {
-                    await db.ref('users/' + name).set({ password: pwd, balance: 100000 });
-                    balance = 100000;
-                } else if (data.password !== pwd) {
-                    alert("密码错误！");
-                    btn.disabled = false;
-                    btn.innerText = "进入系统";
-                    return;
-                } else {
-                    balance = data.balance;
-                }
-
-                playerName = name;
-                document.getElementById('loginBox').style.display = 'none';
-                document.getElementById('gameUI').style.display = 'block';
-                document.getElementById('balanceDisplay').innerText = "¥" + balance.toLocaleString();
-            } catch (e) {
-                console.error(e);
-                alert("连接失败，请确认 Firebase Rules 为 public");
-                btn.disabled = false;
-                btn.innerText = "重试";
-            }
-        };
-    </script>
-
+    
     <style>
-        body { font-family: sans-serif; background: #0b0e14; color: #fff; text-align: center; padding: 50px; }
-        .card { background: #161b22; padding: 30px; border-radius: 15px; border: 1px solid #f1c40f; display: inline-block; }
-        input { display: block; margin: 10px auto; padding: 10px; width: 200px; border-radius: 5px; border: none; }
-        button { padding: 10px 30px; background: #f1c40f; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
-        button:disabled { background: #666; }
+        :root {
+            --bg: #0b0e14;
+            --card: #161b22;
+            --primary: #f1c40f; /* 经典金 */
+            --up: #ef4444;    /* 虚拟市场习惯：红涨 */
+            --down: #22c55e;  /* 虚拟市场习惯：绿跌 */
+            --text: #e6edf3;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0; padding: 20px;
+        }
+
+        /* 登录框 */
+        #loginBox {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 1000;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .login-card {
+            background: var(--card); padding: 40px; border-radius: 20px;
+            border: 1px solid var(--primary); width: 320px; text-align: center;
+        }
+
+        /* 主容器 */
+        .container { max-width: 900px; margin: 0 auto; }
+
+        .dashboard {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            padding: 25px; border-radius: 16px; border: 1px solid #30363d;
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .balance-amount { font-size: 32px; font-weight: 800; color: var(--primary); }
+
+        /* 股票网格布局 */
+        .stock-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
+        .stock-card {
+            background: var(--card); padding: 20px; border-radius: 12px;
+            border: 1px solid #30363d; transition: 0.2s;
+        }
+        .stock-card:hover { border-color: var(--primary); }
+
+        .price-row { display: flex; justify-content: space-between; align-items: baseline; margin: 15px 0; }
+        .current-price { font-size: 24px; font-weight: bold; font-family: monospace; }
+        
+        /* 按钮与输入 */
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        input[type="number"] {
+            background: #0d1117; border: 1px solid #30363d; color: white;
+            padding: 8px; border-radius: 6px; width: 60px;
+        }
+        .btn {
+            border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer;
+        }
+        .btn-buy { background: rgba(239, 68, 68, 0.15); color: var(--up); border: 1px solid var(--up); }
+        .btn-sell { background: rgba(34, 197, 94, 0.15); color: var(--down); border: 1px solid var(--down); }
+
+        /* 新闻盒 */
+        #newsBox {
+            background: rgba(241, 196, 15, 0.1); border: 1px solid var(--primary);
+            padding: 15px; border-radius: 12px; margin-bottom: 20px; display: none;
+        }
+
+        /* 战力榜 */
+        .rank-section {
+            background: var(--card); padding: 20px; border-radius: 16px; 
+            border: 1px solid #30363d; margin-top: 30px;
+        }
+        .rank-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #21262d; }
     </style>
 </head>
 <body>
 
 <div id="loginBox">
-    <div class="card">
-        <h2>🚀 CAIXIANG666 登录</h2>
-        <input type="text" id="pName" placeholder="交易员代号">
-        <input type="password" id="pPwd" placeholder="4位密码">
-        <button id="loginBtn" onclick="doLogin()">进入系统</button>
-        <p id="netStatus" style="font-size:12px; color: #8b949e; margin-top:15px">卫星扫描中...</p>
+    <div class="login-card">
+        <h2 style="color:var(--primary)">🔐 终端授权</h2>
+        <input type="text" id="pName" placeholder="操盘代号" style="width:100%; padding:12px; margin-bottom:10px; background:#0d1117; border:1px solid #30363d; color:white; border-radius:8px; box-sizing:border-box">
+        <input type="password" id="pPwd" placeholder="4位密钥" style="width:100%; padding:12px; margin-bottom:20px; background:#0d1117; border:1px solid #30363d; color:white; border-radius:8px; box-sizing:border-box">
+        <button onclick="doLogin()" id="loginBtn" style="width:100%; padding:15px; background:var(--primary); color:black; border:none; border-radius:8px; font-weight:bold; cursor:pointer">初始化系统</button>
+        <p id="netStatus" style="font-size:12px; color:#8b949e; margin-top:15px">卫星连接中...</p>
     </div>
 </div>
 
-<div id="gameUI" style="display:none">
-    <h1>欢迎回来</h1>
-    <div class="card">
-        <div style="font-size:14px; color:#8b949e">当前资产</div>
-        <div id="balanceDisplay" style="font-size:40px; color:#f1c40f">¥0.00</div>
+<div id="gameUI" class="container" style="display:none">
+    <div class="dashboard">
+        <div>
+            <div style="font-size:12px; color:#8b949e">当前可用资产 (CNY)</div>
+            <div id="balanceDisplay" class="balance-amount">¥100,000.00</div>
+        </div>
+        <div>
+            <button onclick="getNews()" style="background:#9b59b6; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer">📰 领取内幕</button>
+        </div>
+    </div>
+
+    <div id="newsBox">
+        📢 <b style="color:var(--primary)">内幕情报：</b> <span id="newsContent"></span>
+    </div>
+
+    <div style="margin-bottom:15px; display:flex; align-items:center; gap:10px">
+        <span>单次交易量:</span>
+        <input type="number" id="buyAmount" value="100">
+    </div>
+
+    <div class="stock-grid" id="stockGrid"></div>
+
+    <button onclick="simulateDay()" style="width:100%; padding:20px; background:var(--primary); color:black; border:none; border-radius:12px; font-size:18px; font-weight:bold; margin-top:25px; cursor:pointer">⏳ 同步市场周期 (模拟一天)</button>
+
+    <div class="rank-section">
+        <h3 style="margin-top:0; color:var(--primary)">🏆 全球操盘战力榜</h3>
+        <div id="rankList">加载中...</div>
     </div>
 </div>
 
+<script>
+    // ✅ Firebase 配置
+    const firebaseConfig = {
+      apiKey: "AIzaSyAOCLu6X1gbrYzHLx_HlhJrtXQ_ftSddcQ",
+      authDomain: "caixiang666-stock.firebaseapp.com",
+      databaseURL: "https://caixiang666-stock-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "caixiang666-stock",
+      storageBucket: "caixiang666-stock.firebasestorage.app",
+      appId: "1:504203288950:web:2f93e0c6a2dde37f095a57"
+    };
+
+    let db, balance = 100000, playerName = "", stocks = [], activeNews = null;
+    const newsList = [{t:"芯片大涨",k:"芯片",b:0.15},{t:"能源反弹",k:"能源",b:0.12}];
+
+    function initFirebase() {
+        if (typeof firebase !== 'undefined') {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.database();
+            document.getElementById('netStatus').innerText = "✅ 卫星连接就绪";
+        } else { setTimeout(initFirebase, 500); }
+    }
+    initFirebase();
+
+    async function doLogin() {
+        const name = document.getElementById('pName').value.trim();
+        const pwd = document.getElementById('pPwd').value;
+        if(!name || !pwd) return alert("身份信息不全");
+
+        try {
+            const snap = await db.ref('users/' + name).once('value');
+            const data = snap.val();
+            if (!data) {
+                await db.ref('users/' + name).set({ password: pwd, balance: 100000 });
+                balance = 100000;
+            } else if (data.password !== pwd) { return alert("密钥错误"); }
+            else { balance = data.balance; }
+            
+            playerName = name;
+            document.getElementById('loginBox').style.display='none';
+            document.getElementById('gameUI').style.display='block';
+            initStocks(); updateRanks();
+        } catch (e) { alert("网络异常"); }
+    }
+
+    function initStocks() {
+        const adjs = ['芯片','医疗','能源','科技'], nouns = ['发展','股份','集团'];
+        stocks = [];
+        for(let i=0; i<6; i++) {
+            let p = parseFloat((Math.random()*80+20).toFixed(2));
+            stocks.push({
+                code: '600'+Math.floor(Math.random()*899+100),
+                name: adjs[Math.floor(Math.random()*adjs.length)]+nouns[Math.floor(Math.random()*nouns.length)],
+                price: p, hold: 0, lastPrice: p
+            });
+        }
+        renderGrid();
+    }
+
+    function renderGrid() {
+        const grid = document.getElementById('stockGrid');
+        grid.innerHTML = '';
+        stocks.forEach((s, i) => {
+            const chg = (((s.price - s.lastPrice) / s.lastPrice) * 100).toFixed(2);
+            grid.innerHTML += `
+                <div class="stock-card">
+                    <div style="display:flex; justify-content:space-between">
+                        <span style="font-weight:bold">${s.name}</span>
+                        <span style="color:#8b949e; font-size:12px">${s.code}</span>
+                    </div>
+                    <div class="price-row">
+                        <span class="current-price" style="color:${chg>=0?'var(--up)':'var(--down)'}">¥${s.price.toFixed(2)}</span>
+                        <span style="color:${chg>=0?'var(--up)':'var(--down)'}">${chg}%</span>
+                    </div>
+                    <div style="font-size:12px; color:#8b949e; margin-bottom:15px">当前持有: ${s.hold}</div>
+                    <div class="controls">
+                        <button class="btn btn-buy" onclick="buy(${i})">买入</button>
+                        <button class="btn btn-sell" onclick="sell(${i})">清仓</button>
+                    </div>
+                </div>
+            `;
+        });
+        document.getElementById('balanceDisplay').innerText = `¥${balance.toLocaleString(undefined,{minimumFractionDigits:2})}`;
+    }
+
+    function getNews() {
+        if(confirm("乖儿子，来看新闻啦？")) {
+            activeNews = newsList[Math.floor(Math.random()*newsList.length)];
+            document.getElementById('newsBox').style.display = 'block';
+            document.getElementById('newsContent').innerText = activeNews.t;
+        }
+    }
+
+    function buy(idx) {
+        let amt = parseInt(document.getElementById('buyAmount').value);
+        let cost = stocks[idx].price * amt;
+        if(balance >= cost) { balance -= cost; stocks[idx].hold += amt; renderGrid(); }
+        else alert("资金不足");
+    }
+
+    function sell(idx) {
+        balance += stocks[idx].price * stocks[idx].hold;
+        stocks[idx].hold = 0;
+        renderGrid();
+    }
+
+    async function simulateDay() {
+        stocks.forEach(s => {
+            s.lastPrice = s.price;
+            let rnd = (Math.random()*0.2 - 0.1);
+            if(activeNews && s.name.includes(activeNews.k)) rnd += activeNews.b;
+            s.price = Math.max(1, s.price * (1 + rnd));
+        });
+        if(db && playerName) { await db.ref('users/' + playerName).update({ balance: balance }); }
+        activeNews = null;
+        document.getElementById('newsBox').style.display = 'none';
+        renderGrid();
+        alert("市场同步完成！");
+    }
+
+    function updateRanks() {
+        db.ref('users').orderByChild('balance').limitToLast(10).on('value', (snap) => {
+            let list = [];
+            snap.forEach(c => { list.push({n: c.key, b: c.val().balance}); });
+            list.sort((a,b) => b.b - a.b);
+            let h = "";
+            list.forEach((u, i) => {
+                h += `<div class="rank-item"><span>${i+1}. ${u.n}</span><span style="color:var(--primary)">¥${u.b.toLocaleString()}</span></div>`;
+            });
+            document.getElementById('rankList').innerHTML = h;
+        });
+    }
+</script>
 </body>
 </html>
+
